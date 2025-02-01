@@ -1,54 +1,119 @@
 import Phaser from 'phaser';
 
-class MainScene extends Phaser.Scene {
-	constructor() {
-		super({ key: 'MainScene' });
-	}
+const sizes = {
+  width: 500,
+  height: 500,
+};
+const speedDown = 150;
 
-	preload() {
-		// You can load assets here if needed
-	}
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super("GameScene");
+    this.player;
+    this.cursor;
+    this.playerSpeed = speedDown + 50;
+    this.target;
+    this.points = 0;
+    this.textScore;
+    this.textTime;
+    this.timedEvent;
+    this.remainingTime;
+  }
 
-	create() {
-		// Add a simple red circle to the scene
-		this.circle = this.add.circle(400, 300, 50, 0xff0000); // x, y, radius, color
-		this.circle.setOrigin(0.5, 0.5); // Set origin to the center
+  preload() {
+    this.load.image("bg", "assets/bg.png");
+    this.load.image("basket", "assets/basket.png");
+    this.load.image("apple", "assets/money.png");
+  }
 
-		// Make the circle interactive
-		this.circle.setInteractive();
+  create() {
+    console.log("Phaser game initialized!");
 
-		// Respond to input events (like clicking the circle)
-		this.circle.on('pointerdown', () => {
-			console.log('Circle clicked!');
-		});
+    this.bg = this.add.image(0, 0, "bg").setOrigin(0, 0);
+    this.player = this.physics.add.image(0, sizes.height - 100, "basket").setOrigin(0, 0);
+    this.player.setImmovable(true);
+    this.player.body.allowGravity = false;
 
-		// Set up a key input to move the circle
-		this.cursors = this.input.keyboard.createCursorKeys();
-	}
+    this.target = this.physics.add.image(0, 0, "apple").setOrigin(0, 0);
+    this.player.setSize(
+      this.player.width / 10, 
+      this.player.height - this.player.height / 6
+    ).setOffset(
+      this.player.width / 10, 
+      this.player.height - this.player.height / 10
+    );
+    
+    this.target.setMaxVelocity(0, speedDown);
+    this.physics.add.overlap(this.target, this.player, this.targetHit, null, this);
+    
+    this.cursor = this.input.keyboard.createCursorKeys();
+    this.player.setCollideWorldBounds(true);
 
-	update() {
-		// Move the circle based on arrow key input
-		const speed = 5;
+    this.textScore = this.add.text(sizes.width - 120, 10, "Score: 0", {
+      font: "25px Arial",
+      fill: "#FFFFFF",
+    });
 
-		if (this.cursors.left.isDown) {
-			this.circle.x -= speed;
-		} else if (this.cursors.right.isDown) {
-			this.circle.x += speed;
-		}
+    this.textTime = this.add.text(sizes.width - 120, 40, "Remaining Time: 0", {
+      font: "25px Arial",
+      fill: "#FFFFFF",
+    });
 
-		if (this.cursors.up.isDown) {
-			this.circle.y -= speed;
-		} else if (this.cursors.down.isDown) {
-			this.circle.y += speed;
-		}
-	}
+    this.timedEvent = this.time.delayedCall(30000, this.gameOver, [], this);
+  }
+
+  update() {
+    this.remainingTime = this.timedEvent.getRemainingSeconds();
+    this.textTime.setText(`Remaining Time: ${Math.round(this.remainingTime)}`);
+
+    if (this.target.y >= sizes.height) {
+      this.target.setY(0);
+      this.target.setX(this.getRandomX());
+    }
+
+    if (this.cursor.left.isDown) {
+      this.player.setVelocityX(-this.playerSpeed);
+    } else if (this.cursor.right.isDown) {
+      this.player.setVelocityX(this.playerSpeed);
+    } else {
+      this.player.setVelocityX(0);
+    }
+  }
+
+  gameOver() {
+    console.log("Game Over!");
+    this.scene.pause();
+    this.add.text(sizes.width / 2 - 50, sizes.height / 2, "Game Over!", {
+      font: "30px Arial",
+      fill: "#FF0000",
+    });
+  }
+
+  getRandomX() {
+    return Math.floor(Math.random() * (sizes.width - 50));
+  }
+
+  targetHit() {
+    this.target.setY(0);
+    this.target.setX(this.getRandomX());
+    this.points++;
+    this.textScore.setText(`Score: ${this.points}`);
+  }
 }
 
 const config = {
-	type: Phaser.AUTO,
-	width: 800,
-	height: 600,
-	scene: MainScene,
+  type: Phaser.AUTO,
+  width: sizes.width,
+  height: sizes.height,
+  parent: "gameContainer", // Attach to div instead of a pre-made canvas
+  physics: {
+    default: "arcade",
+    arcade: {
+      gravity: { y: speedDown },
+      debug: false,
+    },
+  },
+  scene: [GameScene],
 };
 
-const game = new Phaser.Game(config);
+new Phaser.Game(config);
