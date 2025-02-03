@@ -103,8 +103,13 @@ class SpaceScene extends Phaser.Scene {
 				this.meteorSpeedMultiplier = 1.5;
 				this.meteorSpawnRate = 300;
 
-				this.time.removeAllEvents();
-				this.time.addEvent({
+				// Remove only the meteor spawning event, not all events
+				if (this.meteorSpawnEvent) {
+					this.meteorSpawnEvent.remove();
+				}
+
+				// Add a new meteor spawn event with increased spawn rate
+				this.meteorSpawnEvent = this.time.addEvent({
 					delay: this.meteorSpawnRate,
 					callback: this.spawnMeteor,
 					callbackScope: this,
@@ -113,10 +118,15 @@ class SpaceScene extends Phaser.Scene {
 
 				this.time.delayedCall(5000, () => {
 					this.meteorSpeedMultiplier = 1;
-					this.meteorSpawnRate = 200;
+					this.meteorSpawnRate = 400; // Reset to normal spawn rate
 
-					this.time.removeAllEvents();
-					this.time.addEvent({
+					// Remove only the meteor spawning event again
+					if (this.meteorSpawnEvent) {
+						this.meteorSpawnEvent.remove();
+					}
+
+					// Restore normal meteor spawn rate
+					this.meteorSpawnEvent = this.time.addEvent({
 						delay: this.meteorSpawnRate,
 						callback: this.spawnMeteor,
 						callbackScope: this,
