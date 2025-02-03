@@ -13,20 +13,22 @@ class SpaceScene extends Phaser.Scene {
 		this.load.image('meteorGreySmall', '../resources/Meteors/meteorGrey_med1.png');
 		this.load.image('meteorBrownBig', '../resources/Meteors/meteorBrown_big1.png');
 		this.load.image('meteorGreyBig', '../resources/Meteors/meteorGrey_big1.png');
+		this.load.image('healthPowerUp', '../resources/Power-ups/pill_green.png');
+		this.load.image('speedPowerUp', '../resources/Power-ups/powerupYellow_bolt.png');
+		this.load.image('speedMeteorsPowerDown', '../resources/Power-ups/powerupRed.png');
 	}
 
 	create() {
-		// Reset player health and timer
 		this.playerHealth = 100;
 		this.gameTime = 120;
+		this.spaceshipSpeed = 300;
+		this.meteorSpeedMultiplier = 1;
 
-		// Set background
 		this.add
 			.image(0, 0, 'stars')
 			.setOrigin(0, 0)
 			.setDisplaySize(this.sys.game.config.width, this.sys.game.config.height);
 
-		// Create the spaceship
 		this.spaceship = this.physics.add.sprite(
 			this.sys.game.config.width / 2,
 			this.sys.game.config.height - 100,
@@ -34,36 +36,30 @@ class SpaceScene extends Phaser.Scene {
 		);
 		this.spaceship.setCollideWorldBounds(true);
 
-		// Enable smooth movement
 		this.cursors = this.input.keyboard.createCursorKeys();
-
-		// Create a meteor group
 		this.meteors = this.physics.add.group();
+		this.powerUps = this.physics.add.group();
 
-		// Spawn meteors every second
-		this.time.addEvent({ delay: 1000, callback: this.spawnMeteor, callbackScope: this, loop: true });
+		this.time.addEvent({ delay: 400, callback: this.spawnMeteor, callbackScope: this, loop: true });
+		this.time.addEvent({ delay: 3000, callback: this.spawnPowerUp, callbackScope: this, loop: true });
 
-		// Collision detection
 		this.physics.add.overlap(this.spaceship, this.meteors, this.hitMeteor, null, this);
+		this.physics.add.overlap(this.spaceship, this.powerUps, this.collectPowerUp, null, this);
 
-		// Timer Text (top-left)
 		this.timerText = this.add.text(20, 20, '00:00', { fontSize: '32px', fill: '#FFFFFF' });
-
-		// Health Text (top-right)
 		this.healthText = this.add.text(this.sys.game.config.width - 250, 20, 'Health: 100', {
 			fontSize: '32px',
 			fill: '#FFFFFF',
 		});
 
-		// Start countdown timer
 		this.startTimer();
 	}
 
 	update() {
 		if (this.cursors.left.isDown) {
-			this.spaceship.setVelocityX(-300);
+			this.spaceship.setVelocityX(-this.spaceshipSpeed);
 		} else if (this.cursors.right.isDown) {
-			this.spaceship.setVelocityX(300);
+			this.spaceship.setVelocityX(this.spaceshipSpeed);
 		} else {
 			this.spaceship.setVelocityX(0);
 		}
@@ -80,10 +76,60 @@ class SpaceScene extends Phaser.Scene {
 		const meteorData = Phaser.Utils.Array.GetRandom(meteorTypes);
 		const x = Phaser.Math.Between(50, this.sys.game.config.width - 50);
 		const meteor = this.meteors.create(x, -50, meteorData.key);
-		meteor.setVelocityY(Phaser.Math.Between(100, 300));
+		meteor.setVelocityY(Phaser.Math.Between(100, 300) * this.meteorSpeedMultiplier);
 		meteor.setGravityY(50);
 		meteor.setScale(meteorData.scale);
 		meteor.damageValue = meteorData.damage;
+	}
+
+	spawnPowerUp() {
+		const powerUpTypes = ['healthPowerUp', 'speedPowerUp', 'speedMeteorsPowerDown'];
+		const powerUpKey = Phaser.Utils.Array.GetRandom(powerUpTypes);
+		const x = Phaser.Math.Between(50, this.sys.game.config.width - 50);
+		const powerUp = this.powerUps.create(x, -50, powerUpKey);
+		powerUp.setVelocityY(200);
+		powerUp.powerUpType = powerUpKey;
+	}
+
+	collectPowerUp(spaceship, powerUp) {
+		switch (powerUp.powerUpType) {
+			case 'healthPowerUp':
+				this.playerHealth = Math.min(100, this.playerHealth + 20);
+				break;
+			case 'speedPowerUp':
+				this.spaceshipSpeed = 500;
+				this.time.delayedCall(5000, () => (this.spaceshipSpeed = 300));
+				break;
+			case 'speedMeteorsPowerDown':
+				this.meteorSpeedMultiplier = 1.5; // Increase meteor speed
+				this.meteorSpawnRate = 300; // Increase spawn rate (lower delay)
+
+				// Update the spawn rate dynamically
+				this.time.removeAllEvents(); // Remove existing events
+				this.time.addEvent({
+					delay: this.meteorSpawnRate,
+					callback: this.spawnMeteor,
+					callbackScope: this,
+					loop: true,
+				});
+
+				this.time.delayedCall(5000, () => {
+					this.meteorSpeedMultiplier = 1; // Reset speed
+					this.meteorSpawnRate = 200; // Reset spawn rate
+
+					// Restore normal spawn rate
+					this.time.removeAllEvents();
+					this.time.addEvent({
+						delay: this.meteorSpawnRate,
+						callback: this.spawnMeteor,
+						callbackScope: this,
+						loop: true,
+					});
+				});
+				break;
+		}
+		this.healthText.setText(`Health: ${this.playerHealth}`);
+		powerUp.destroy();
 	}
 
 	hitMeteor(spaceship, meteor) {
@@ -121,9 +167,7 @@ class SpaceScene extends Phaser.Scene {
 	}
 
 	winGame() {
-		if (this.playerHealth > 0) {
-			this.restartGame();
-		}
+		this.restartGame();
 	}
 
 	restartGame() {
