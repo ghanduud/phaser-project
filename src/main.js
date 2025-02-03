@@ -6,7 +6,6 @@ class SpaceScene extends Phaser.Scene {
 	}
 
 	preload() {
-		// Load assets
 		this.load.image('stars', '../resources/stars.jpg');
 		this.load.image('spaceship', '../resources/playerShip1_blue.png');
 		this.load.image('meteorBrownSmall', '../resources/Meteors/meteorBrown_med1.png');
@@ -101,11 +100,10 @@ class SpaceScene extends Phaser.Scene {
 				this.time.delayedCall(5000, () => (this.spaceshipSpeed = 300));
 				break;
 			case 'speedMeteorsPowerDown':
-				this.meteorSpeedMultiplier = 1.5; // Increase meteor speed
-				this.meteorSpawnRate = 300; // Increase spawn rate (lower delay)
+				this.meteorSpeedMultiplier = 1.5;
+				this.meteorSpawnRate = 300;
 
-				// Update the spawn rate dynamically
-				this.time.removeAllEvents(); // Remove existing events
+				this.time.removeAllEvents();
 				this.time.addEvent({
 					delay: this.meteorSpawnRate,
 					callback: this.spawnMeteor,
@@ -114,10 +112,9 @@ class SpaceScene extends Phaser.Scene {
 				});
 
 				this.time.delayedCall(5000, () => {
-					this.meteorSpeedMultiplier = 1; // Reset speed
-					this.meteorSpawnRate = 200; // Reset spawn rate
+					this.meteorSpeedMultiplier = 1;
+					this.meteorSpawnRate = 200;
 
-					// Restore normal spawn rate
 					this.time.removeAllEvents();
 					this.time.addEvent({
 						delay: this.meteorSpawnRate,
